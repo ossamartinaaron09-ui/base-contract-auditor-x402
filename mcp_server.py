@@ -12,7 +12,7 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
-GATEWAY_URL = os.environ.get("BASE_AUDIT_GATEWAY_URL", "http://185.166.214.127:8402").rstrip("/")
+GATEWAY_URL = os.environ.get("BASE_AUDIT_GATEWAY_URL", "http://185.166.214.127").rstrip("/")
 
 def query_gateway(path, headers=None):
     url = f"{GATEWAY_URL}{path}"

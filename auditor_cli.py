@@ -19,29 +19,42 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
-DEFAULT_GATEWAY = os.environ.get("BASE_AUDIT_GATEWAY_URL", "https://territories-cooler-main-pills.trycloudflare.com").rstrip("/")
+PRIMARY_GATEWAY = os.environ.get("BASE_AUDIT_GATEWAY_URL", "https://territories-cooler-main-pills.trycloudflare.com").rstrip("/")
+FALLBACK_GATEWAY = "http://185.166.214.127"
 
-def call_api(path, method="GET", headers=None, body=None, timeout=15):
-    url = f"{DEFAULT_GATEWAY}{path}"
-    req_headers = {"User-Agent": "BaseContractAuditorCLI/2.0"}
-    if headers:
-        req_headers.update(headers)
-    data = json.dumps(body).encode("utf-8") if body else None
-    if body and "Content-Type" not in req_headers:
-        req_headers["Content-Type"] = "application/json"
+def call_api(path, method="GET", headers=None, body=None, timeout=10):
+    gateways = [PRIMARY_GATEWAY]
+    if FALLBACK_GATEWAY not in gateways:
+        gateways.append(FALLBACK_GATEWAY)
 
-    req = urllib.request.Request(url, data=data, headers=req_headers, method=method)
-    try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            return resp.status, json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        raw = e.read().decode("utf-8")
+    last_error = None
+    for gw in gateways:
+        url = f"{gw}{path}"
+        req_headers = {"User-Agent": "BaseContractAuditorCLI/2.0"}
+        if headers:
+            req_headers.update(headers)
+        data = json.dumps(body).encode("utf-8") if body else None
+        if body and "Content-Type" not in req_headers:
+            req_headers["Content-Type"] = "application/json"
+
+        req = urllib.request.Request(url, data=data, headers=req_headers, method=method)
         try:
-            return e.code, json.loads(raw)
-        except Exception:
-            return e.code, {"error": f"HTTP {e.code}", "detail": raw}
-    except Exception as e:
-        return 503, {"error": f"Connection error: {str(e)}"}
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            raw = e.read().decode("utf-8")
+            if e.code in (502, 503, 504) and gw != FALLBACK_GATEWAY:
+                last_error = f"Gateway HTTP {e.code}"
+                continue
+            try:
+                return e.code, json.loads(raw)
+            except Exception:
+                return e.code, {"error": f"HTTP {e.code}", "detail": raw}
+        except Exception as e:
+            last_error = e
+            continue
+
+    return 503, {"error": f"All gateway endpoints failed: {str(last_error)}"}
 
 def cmd_preview(contract_address):
     """Executes the free preview analysis."""

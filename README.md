@@ -86,3 +86,11 @@ Add the server to your `claude_desktop_config.json`:
 
 ## 📄 License
 MIT License. Copyright (c) 2026 ossamartinaaron09-ui.
+
+## High-Availability Dual Gateway (HTTPS & Static Fallback)
+
+The CLI and MCP server are configured with active dual-endpoint redundancy:
+1. **Primary Gateway (HTTPS):** `https://territories-cooler-main-pills.trycloudflare.com` (Cloudflare Tunnel with full TLS/SSL).
+2. **Static Fallback Gateway (HTTP):** `http://185.166.214.127` (Port 80 static server IP).
+
+If the primary HTTPS endpoint undergoes tunnel renewal or temporary maintenance, all client requests automatically and immediately failover to the static server IP without interrupting service.

@@ -12,25 +12,38 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
-GATEWAY_URL = os.environ.get("BASE_AUDIT_GATEWAY_URL", "https://territories-cooler-main-pills.trycloudflare.com").rstrip("/")
+PRIMARY_GATEWAY = os.environ.get("BASE_AUDIT_GATEWAY_URL", "https://territories-cooler-main-pills.trycloudflare.com").rstrip("/")
+FALLBACK_GATEWAY = "http://185.166.214.127"
 
-def query_gateway(path, headers=None):
-    url = f"{GATEWAY_URL}{path}"
-    req_headers = {"User-Agent": "BaseContractAuditorMCP/2.0"}
-    if headers:
-        req_headers.update(headers)
-    req = urllib.request.Request(url, headers=req_headers, method="GET")
-    try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            return resp.status, json.loads(resp.read().decode("utf-8"))
-    except urllib.error.HTTPError as e:
-        raw = e.read().decode("utf-8")
+def query_gateway(path, headers=None, timeout=10):
+    gateways = [PRIMARY_GATEWAY]
+    if FALLBACK_GATEWAY not in gateways:
+        gateways.append(FALLBACK_GATEWAY)
+
+    last_error = None
+    for gw in gateways:
+        url = f"{gw}{path}"
+        req_headers = {"User-Agent": "BaseContractAuditorMCP/2.0"}
+        if headers:
+            req_headers.update(headers)
+        req = urllib.request.Request(url, headers=req_headers, method="GET")
         try:
-            return e.code, json.loads(raw)
-        except Exception:
-            return e.code, {"error": f"HTTP {e.code}", "detail": raw}
-    except Exception as e:
-        return 503, {"error": f"Gateway unreachable: {str(e)}"}
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.status, json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            raw = e.read().decode("utf-8")
+            if e.code in (502, 503, 504) and gw != FALLBACK_GATEWAY:
+                last_error = f"Gateway HTTP {e.code}"
+                continue
+            try:
+                return e.code, json.loads(raw)
+            except Exception:
+                return e.code, {"error": f"HTTP {e.code}", "detail": raw}
+        except Exception as e:
+            last_error = e
+            continue
+
+    return 503, {"error": f"All gateway endpoints unreachable: {str(last_error)}"}
 
 TOOLS = [
     {

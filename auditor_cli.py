@@ -6,7 +6,7 @@ Supports:
 1. Free Preview Mode: Instant risk score, bytecode metrics, and detected alert count.
 2. Deep Opcode Audit: Full breakdown of SELFDESTRUCT, DELEGATECALL, ownership backdoors for 0.50 USDC via x402.
 
-Gateway Endpoint: http://185.166.214.127/api/audit-contract
+Gateway Endpoint: https://territories-cooler-main-pills.trycloudflare.com/api/audit-contract
 Official Base Vault: 0xbefe9ce194a3d685486e5fda11c5221146de4d6c
 Official Base USDC: 0x833589fcd6edb6e08f4c7c32d4f71b54bda02913
 """
@@ -19,7 +19,7 @@ import urllib.request
 import urllib.error
 import urllib.parse
 
-DEFAULT_GATEWAY = os.environ.get("BASE_AUDIT_GATEWAY_URL", "http://185.166.214.127").rstrip("/")
+DEFAULT_GATEWAY = os.environ.get("BASE_AUDIT_GATEWAY_URL", "https://territories-cooler-main-pills.trycloudflare.com").rstrip("/")
 
 def call_api(path, method="GET", headers=None, body=None, timeout=15):
     url = f"{DEFAULT_GATEWAY}{path}"
